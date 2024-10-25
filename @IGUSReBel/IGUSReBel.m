@@ -1,5 +1,5 @@
 classdef IGUSReBel < RobotBaseClass
-    %% IGUS ReBel 6DOF Robot
+    %% IGUS ReBel 6DOF Robot, + IGUS linear rail. Hence, 7DOF
 
     properties(Access = public)              
         plyFileNameStem = 'IGUSReBel';
@@ -12,24 +12,25 @@ classdef IGUSReBel < RobotBaseClass
             if nargin < 1			
 				baseTr = eye(4);				
             end
-            self.CreateModel();
-			self.model.base = self.model.base.T * baseTr;
-            self.model.tool = self.toolTr;
-            self.PlotAndColourRobot();
 
-            
-            %self.PlotAndColourRobot(); 
-            % self.model.teach;
+            self.model.base = self.model.base.T * baseTr * trotx(-pi/2);
+            self.model.tool = self.toolTr;
+
+            % q = [0,0,0,0,0,0,0]; % For testing purposes
+           
+            self.PlotAndColourRobot(); 
+            self.model.animate(q);
         end
 
 %% Create the robot model
         function CreateModel(self)          
-            link(1) = Link('d',0.252,'a',0,'alpha',-pi/2,'qlim',deg2rad([-179 179]));
-            link(2) = Link('d',0,'a',0.2415,'alpha',-pi,'qlim',deg2rad([-80 140]),'offset',-pi/2);
-            link(3) = Link('d',0,'a',0,'alpha',-pi/2,'qlim',deg2rad([-140 80]),'offset',-pi/2);
-            link(4) = Link('d',0.3,'a',0,'alpha',pi/2,'qlim',deg2rad([-179 179]));
-            link(5) = Link('d',0,'a',0,'alpha',-pi/2,'qlim',deg2rad([-95 95]));
-            link(6) = Link('d',0.129,'a',0,'alpha',0,'qlim',deg2rad([-179 179]));
+            link(1) = Link([pi 0 0 -pi/2 1],'qlim',[-1.85,0]);
+            link(2) = Link('d',0.301,'a',0,'alpha',-pi/2,'qlim',deg2rad([-179 179]));
+            link(3) = Link('d',0,'a',0.2415,'alpha',-pi,'qlim',deg2rad([-80 140]),'offset',-pi/2);
+            link(4) = Link('d',0,'a',0,'alpha',-pi/2,'qlim',deg2rad([-80 140]),'offset',-pi/2);
+            link(5) = Link('d',0.3,'a',0,'alpha',pi/2,'qlim',deg2rad([-179 179]));
+            link(6) = Link('d',0,'a',0,'alpha',-pi/2,'qlim',deg2rad([-95 95]));
+            link(7) = Link('d',0.129,'a',0,'alpha',0,'qlim',deg2rad([-179 179]));
           
             self.model = SerialLink(link,'name',self.name);
         end
