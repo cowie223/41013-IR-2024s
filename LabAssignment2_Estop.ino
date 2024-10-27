@@ -87,4 +87,11 @@ void loop() {
     ledStateGrn = 1;
     safeOut = 1;
   }
+
+  if (Serial.available() > 0) {
+    String request = Serial.readStringUntil('\n');
+    if (request == "getSafeOut") {
+      Serial.println(safeOut);
+    }
+  }
 }
