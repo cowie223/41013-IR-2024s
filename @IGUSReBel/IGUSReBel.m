@@ -13,13 +13,12 @@ classdef IGUSReBel < RobotBaseClass
 				baseTr = eye(4);				
             end
 
-            self.model.base = self.model.base.T * baseTr * trotx(-pi/2);
+            self.model.base = self.model.base.T * baseTr * trotx(pi/2) * trotz(pi);
             self.model.tool = self.toolTr;
-
-            % q = [0,0,0,0,0,0,0]; % For testing purposes
            
             self.PlotAndColourRobot(); 
-            self.model.animate(q);
+            % q = [0,0,0,0,0,0,0]; % For testing purposes
+            % self.model.animate();
         end
 
 %% Create the robot model
