@@ -11,55 +11,16 @@ classdef LabAssignment2
     properties
         igus;
         dobot;
-        useLoc;
-        chargeLoc;
+        igusUse;
+        igusCharge;
+        aboveUse;
+        aboveCharge;
+        dobotCharge;
+        belowCharge;
         idleIgusPos;
         idleDobotPos;
         safeOut;
-
-        flagIdle = true;
     end
-
-    % methods (Static)
-    %     function useCall(useGUI)
-    %         % Function to allow data from GUI to be received
-    % 
-    %         self.useLoc = useGUI;
-    %     end
-    % 
-    %     function chargeCall(chargeGUI)
-    %         % Function to allow data from GUI to be received
-    % 
-    %         self.chargeLoc = chargeGUI;
-    %     end
-    % 
-    %     function start()
-    %         self.flagIdle = false;
-    %         moveBot(self.igus,self.useLoc,7);
-    % 
-    %     end
-    % 
-    %     function sleep()
-    %         self.flagIdle = false;
-    %         moveBot(self.igus,self.chargeLoc,7);
-    %         moveBot(self.dobot,self.chargeLoc,5);
-    % 
-    %     end
-    % 
-    %     function wake()
-    %         self.flagIdle = false;
-    %         moveBot(self.dobot,self.idleDobotPos,5);
-    %         moveBot(self.igus,self.useLoc,7);
-    % 
-    %     end
-    % 
-    %     function idle()
-    %         self.flagIdle = false;
-    %         moveBot(self.igus,self.idleIgusPos,7);
-    %         moveBot(self.dobot,self.idleDobotPos,5);
-    % 
-    %     end
-    % end
     
     methods
         function self = LabAssignment2
@@ -68,16 +29,42 @@ classdef LabAssignment2
             
             igusUseLoc = [-0.75,0,1];
             igusUsePose = rotx(pi)*rotz(-pi/2);
-            self.useLoc = SE3(igusUsePose,igusUseLoc);
-
+            self.igusUse = SE3(igusUsePose,igusUseLoc);
+            
             igusChargeLoc = [-1.2,-0.9,0.85];
             igusChargePose = rotx(-pi/2)*rotz(0);
-            self.chargeLoc = SE3(igusChargePose,igusChargeLoc); 
+            self.igusCharge = SE3(igusChargePose,igusChargeLoc);
+            
+            aboveUseLoc = [-0.75,0,1.2];
+            self.aboveUse = SE3(igusUsePose,aboveUseLoc);
+            
+            aboveChargeLoc = [-1.2,-0.75,1.2];
+            self.aboveCharge = SE3(igusChargePose,aboveChargeLoc);
+            
+            dobotChargeLoc = [-1.11,-1,0.75];
+            dobotChargePose = rotx(pi/2)*rotz(0);
+            self.dobotCharge = SE3(dobotChargePose,dobotChargeLoc);
+            
+            belowChargeLoc = [-1.11,-1,0.7];
+            self.belowCharge = SE3(dobotChargePose,belowChargeLoc); 
+
+            igusLoc = transl([-1.4,-1.35,1.03]);
+            self.igus = IGUSReBel(igusLoc);
+
+            dobotLoc = transl([-1.4,-1.15,0.55]);
+            self.dobot = DobotMagician(dobotLoc);
+
+            igusIdleLoc = transl(self.igus.model.fkine(self.igus.model.getpos));
+            igusIdlePose = rotx(0)*rotz(0);
+            self.idleIgusPos = SE3(igusIdlePose,igusIdleLoc);
+
+            dobotIdleLoc = transl(self.dobot.model.fkine(self.dobot.model.getpos));
+            dobotIdlePose = rotx(0)*rotz(0);
+            self.idleDobotPos = SE3(dobotIdlePose,dobotIdleLoc);
 
             self.initEnvironment();
-            pause(2);
             % self.initEstop();
-            self.main();
+            % self.main();
         end
 
         function initEnvironment(self)
@@ -87,15 +74,6 @@ classdef LabAssignment2
             axis([-2,2,-2,2,0,2.5]);
             hold on
             PlaceObject('completeEnvironment.ply',[0,0,0]);
-
-            igusLoc = transl([-1.4,-1.35,1.03]);
-            self.igus = IGUSReBel(igusLoc);
-
-            dobotLoc = transl([-1.4,-1.15,0.55]);
-            self.dobot = DobotMagician(dobotLoc);
-            
-            self.idleIgusPos = self.igus.model.getpos;
-            self.idleDobotPos = self.dobot.model.getpos;
         end
 
         function initEstop(self)
@@ -113,14 +91,13 @@ classdef LabAssignment2
 
         end
 
-        function moveBot(self,loc)
+        function moveBot(self,loc,index)
 
             steps = 100;
-            index = 1;
             if(index == 1)
                 q0 = self.igus.model.getpos;
     
-                q1 = self.igus.model.ikcon(loc,q0);                               % Determine required joint angles via Inverse Kinematics
+                q1 = self.igus.model.ikcon(loc,q0);                            % Determine required joint angles via Inverse Kinematics
                 s = lspb(0,1,steps);                                           % Trapezoidal trajectory generation
                 qMatrix = nan(steps,7);
     
@@ -133,11 +110,16 @@ classdef LabAssignment2
                     self.igus.model.animate(newQ);
                     pause(0.01);
                 end
+                % disp("Target Position: ");
+                % disp(transl(loc));
+                % disp("Actual Result: ");
+                % disp(transl(self.igus.model.fkine(self.igus.model.getpos)));
+                % disp("--------");
                 
             elseif(index == 2)
                 q0 = self.dobot.model.getpos;
     
-                q1 = self.dobot.model.ikcon(pose,q0);                               % Determine required joint angles via Inverse Kinematics
+                q1 = self.dobot.model.ikcon(loc,q0);                           % Determine required joint angles via Inverse Kinematics
                 s = lspb(0,1,steps);                                           % Trapezoidal trajectory generation
                 qMatrix = nan(steps,5);
     
@@ -150,27 +132,56 @@ classdef LabAssignment2
                     self.dobot.model.animate(newQ);
                     pause(0.01);
                 end
+                % disp("Target Position: ");
+                % disp(transl(loc));
+                % disp("Actual Result: ");
+                % disp(transl(self.dobot.model.fkine(self.dobot.model.getpos)));
+                % disp("--------");
             end
         end
 
-        function main(self)
+        function main(self,index)
             % Main function to call and run necessary code blocks in order
             % to execute class effectively.
 
-            % ---------- Move to Use Pos ----------
-            moveBot(self,self.useLoc);
-
+            % ---------- Move to Use Pos ----------    
+            if(index == 1)
+                moveBot(self,self.aboveUse,1);                                  % Move Igus above use position
+                moveBot(self,self.igusUse,1);                                   % Move Igus down to use position
+                pause(0.5);
+            end
             % ---------- Move to Charge Pos ----------
-            moveBot(self.igus,self.chargeLoc,7);
-            moveBot(self.dobot,self.chargeLoc,5);
-
+            if(index == 2)
+                moveBot(self,self.aboveUse,1);                                  % Move Igus above use position
+                moveBot(self,self.aboveCharge,1);                               % Move Igus above charge position
+                moveBot(self,self.igusCharge,1);                                % Move Igus down to charge position
+                moveBot(self,self.belowCharge,2);                               % Move Dobot below charge position
+                moveBot(self,self.dobotCharge,2);                               % Move Dobot up to charge position
+                pause(0.5);
+            end
             % ---------- Move to Wake Pos ----------
-            moveBot(self.dobot,self.idleDobotPos,5);
-            moveBot(self.igus,self.useLoc,7);
-            
+            if(index == 3)
+                moveBot(self,self.belowCharge,2);                               % Move Dobot below charge position
+                moveBot(self,self.aboveCharge,1);                               % Move Igus above charge position
+                moveBot(self,self.aboveUse,1);                                  % Move Igus above use position
+                moveBot(self,self.igusUse,1);                                   % Move Igus down to use position
+                pause(0.5);
+            end
             % ---------- Return to Idle Pos ----------
-            moveBot(self.igus,self.idleIgusPos,7);
-            moveBot(self.dobot,self.idleDobotPos,5);
+            if(index == 4)
+                moveBot(self,self.aboveUse,1);                                  % Move Igus above use position
+                moveBot(self,self.idleIgusPos,1);                               % Move Igus to idle position
+                moveBot(self,self.idleDobotPos,2);                              % Move Dobot to idle position
+                pause(0.5);
+            end
+            % ---------- E STOP ----------
+            if(index == 5)
+
+            end
+            % ---------- RESET ----------
+            if(index == 6)
+
+            end
         end
     end
 end
