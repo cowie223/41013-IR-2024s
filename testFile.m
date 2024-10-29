@@ -14,48 +14,86 @@ dobot = DobotMagician(dobotLoc);
 q0igus = igus.model.getpos;
 q0dobot = dobot.model.getpos;
 
-% % Get the end-effector pose as a 4x4 transformation matrix
-% endEffectorPose = igus.model.fkine(igus.model.getpos).T;
-% endEffectorPosition = endEffectorPose(1:3, 4)
-% 
-% PlaceObject('PhoneHolder.ply', endEffectorPosition); % Place tool at the end effector
+% Setup points for default movement. Later these will be replaced with GUI
+% inputs.
 
-%% Move to point 'Use'
+igusUseLoc = [-0.75,0,1];
+igusUsePose = rotx(pi)*rotz(-pi/2);
+igusUseTransf = SE3(igusUsePose,igusUseLoc);
+
+igusChargeLoc = [-1.2,-0.9,0.85];
+igusChargePose = rotx(-pi/2)*rotz(0);
+igusChargeTransf = SE3(igusChargePose,igusChargeLoc);
+
+aboveUseLoc = [-0.75,0,1.2];
+aboveUseTransf = SE3(igusUsePose,aboveUseLoc);
+
+aboveChargeLoc = [-1.2,-0.75,1.2];
+aboveChargeTransf = SE3(igusChargePose,aboveChargeLoc);
+
+dobotChargeLoc = [-1.11,-1,0.75];
+dobotChargePose = rotx(pi/2)*rotz(0);
+dobotChargeTransf = SE3(dobotChargePose,dobotChargeLoc);
+
+belowChargeLoc = [-1.11,-1,0.7];
+belowChargeTransf = SE3(dobotChargePose,belowChargeLoc);
+
+steps = 100;
+
+igusSteps = [aboveUseTransf igusUseTransf aboveUseTransf aboveChargeTransf igusChargeTransf];
+dobotSteps = [belowChargeTransf dobotChargeTransf];
+
+%% Move to point 'Use' & 'Charge' --> IGUS only
 
 q0 = q0igus;
-steps = 100;
-R = rotx(pi)*rotz(0);                                       % Determine RPY target values   
-T = [-0.75,0,1];                                         % Define translation target
-Transf = SE3(R,T);                                          % Define transformation matrix
-q1 = igus.model.ikcon(Transf, q0);                    % Determine required joint angles via Inverse Kinematics
-s = lspb(0,1,steps);                                        % Trapezoidal trajectory generation
-qMatrix = nan(steps,7);
-for j = 1:steps                                             
-    qMatrix(j,:) = (1-s(j))*q0 + s(j)*q1;
+[~,cols] = size(igusSteps);
+
+for i=1:1:cols
+
+    q1 = igus.model.ikcon(igusSteps(1,i),q0);                          % Determine required joint angles via Inverse Kinematics
+    s = lspb(0,1,steps);                                        % Trapezoidal trajectory generation
+    qMatrix = nan(steps,7);
+
+    for j = 1:steps                                             
+        qMatrix(j,:) = (1-s(j))*q0 + s(j)*q1;
+    end
+    
+    for j=1:1:steps                                             % Animate movement through trajectory           
+        newQ=qMatrix(j,:);
+        igus.model.animate(newQ);
+        pause(0.01);
+    end
+    
+    pause(0.2);
+    
+    q0 = q1;
 end
 
-for j=1:1:steps                                             % Animate movement through trajectory, whilst updating the gripper location           
-    newQ=qMatrix(j,:);
-    igus.model.animate(newQ);
-    pause(0.01);
+q0 = q0dobot;
+[~,cols] = size(dobotSteps);
+
+for i=1:1:cols
+
+    q1 = dobot.model.ikcon(dobotSteps(1,i),q0);                          % Determine required joint angles via Inverse Kinematics
+    s = lspb(0,1,steps);                                        % Trapezoidal trajectory generation
+    qMatrix = nan(steps,5);
+
+    for j = 1:steps                                             
+        qMatrix(j,:) = (1-s(j))*q0 + s(j)*q1;
+    end
+    
+    for j=1:1:steps                                             % Animate movement through trajectory           
+        newQ=qMatrix(j,:);
+        dobot.model.animate(newQ);
+        pause(0.01);
+    end
+    
+    pause(0.2);
+    
+    q0 = q1;
 end
 
-q0 = q1;
+%% New section
 
-R = rotx(-pi/2)*rotz(0);                                       % Determine RPY target values   
-T = [-1,-0.9,0.85];                                         % Define translation target
-Transf = SE3(R,T);                                          % Define transformation matrix
-q1 = igus.model.ikcon(Transf, q0);                    % Determine required joint angles via Inverse Kinematics
-s = lspb(0,1,steps);                                        % Trapezoidal trajectory generation
-qMatrix = nan(steps,7);
-for j = 1:steps                                             
-    qMatrix(j,:) = (1-s(j))*q0 + s(j)*q1;
-end
-
-for j=1:1:steps                                             % Animate movement through trajectory, whilst updating the gripper location           
-    newQ=qMatrix(j,:);
-    igus.model.animate(newQ);
-    pause(0.01);
-end
-
-                
+dobot.model.animate(q0dobot);
+igus.model.animate(q0igus);
